@@ -31,7 +31,6 @@ Student Profile:
 - Background: ${personalization.background}
 - Current knowledge level: ${personalization.knowledgeLevel}
 - Learning goals: ${personalization.learningGoals}
-- Time commitment: ${personalization.timeCommitment}
 
 Create a comprehensive curriculum to teach "${personalization.topic}" from zero to mastery.
 

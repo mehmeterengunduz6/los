@@ -7,7 +7,7 @@ export const anthropic = new Anthropic({
 });
 
 // Model to use for all interactions
-export const MODEL = 'claude-sonnet-4-20250514';
+export const MODEL = 'claude-haiku-4-5-20251001';
 
 // Maximum tokens for responses
 export const MAX_TOKENS = 4096;

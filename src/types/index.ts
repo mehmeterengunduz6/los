@@ -5,7 +5,6 @@ export interface PersonalizationData {
   background: string;
   knowledgeLevel: 'complete-beginner' | 'some-familiarity' | 'intermediate';
   learningGoals: string;
-  timeCommitment: 'casual' | 'moderate' | 'intensive';
 }
 
 // A single node in the curriculum tree

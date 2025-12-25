@@ -8,8 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PersonalizationData, LearningSession } from '@/types';
+import { PersonalizationData, LearningSession, CurriculumNode } from '@/types';
 import { saveSession } from '@/lib/context-manager';
+
+// Helper to count all nodes recursively
+const countAllNodes = (node: CurriculumNode): number => {
+  return 1 + node.children.reduce((sum, child) => sum + countAllNodes(child), 0);
+};
 
 interface Step {
   id: number;
@@ -21,7 +26,7 @@ const steps: Step[] = [
   { id: 1, title: "Let's Get Started", description: "Tell us about yourself" },
   { id: 2, title: "What Do You Want to Learn?", description: "Choose your learning topic" },
   { id: 3, title: "Your Background", description: "Help us personalize your experience" },
-  { id: 4, title: "Learning Preferences", description: "Set your goals and pace" }
+  { id: 4, title: "Learning Goals", description: "What do you want to achieve?" }
 ];
 
 export default function OnboardingForm() {
@@ -29,14 +34,14 @@ export default function OnboardingForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generatedSession, setGeneratedSession] = useState<LearningSession | null>(null);
   
   const [formData, setFormData] = useState<PersonalizationData>({
     name: '',
     topic: '',
     background: '',
     knowledgeLevel: 'complete-beginner',
-    learningGoals: '',
-    timeCommitment: 'moderate'
+    learningGoals: ''
   });
 
   const updateFormData = (field: keyof PersonalizationData, value: string) => {
@@ -98,9 +103,8 @@ export default function OnboardingForm() {
       };
       
       saveSession(session);
-      
-      // Navigate to learning page
-      router.push(`/learn/${data.sessionId}`);
+      setGeneratedSession(session);
+      setIsLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setIsLoading(false);
@@ -190,23 +194,6 @@ export default function OnboardingForm() {
                 className="bg-zinc-900/50 border-zinc-700 text-white placeholder:text-zinc-500 min-h-[100px]"
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="timeCommitment">How much time can you dedicate?</Label>
-              <Select
-                value={formData.timeCommitment}
-                onValueChange={(value) => updateFormData('timeCommitment', value)}
-              >
-                <SelectTrigger className="bg-zinc-900/50 border-zinc-700 text-white">
-                  <SelectValue placeholder="Select your pace" />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  <SelectItem value="casual">Casual - A few hours per week</SelectItem>
-                  <SelectItem value="moderate">Moderate - Several hours per week</SelectItem>
-                  <SelectItem value="intensive">Intensive - Daily focused learning</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         );
       
@@ -214,6 +201,59 @@ export default function OnboardingForm() {
         return null;
     }
   };
+
+  // Show success screen after curriculum generation
+  if (generatedSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center p-4">
+        {/* Background pattern */}
+        <div className="fixed inset-0 opacity-30">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(63 63 70 / 0.4) 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+
+        <Card className="w-full max-w-lg bg-zinc-900/80 border-zinc-800 backdrop-blur-xl shadow-2xl relative z-10">
+          <CardHeader className="text-center border-b border-zinc-800 pb-6">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
+                <span className="text-3xl">✓</span>
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-light text-white">
+              Curriculum Created!
+            </CardTitle>
+            <CardDescription className="text-zinc-400">
+              Your personalized learning path for &quot;{generatedSession.curriculum.title}&quot; is ready
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="pt-6 pb-8">
+            <div className="space-y-4 mb-6">
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <p className="text-sm text-zinc-400 mb-2">Topic</p>
+                <p className="text-white font-medium">{generatedSession.personalization.topic}</p>
+              </div>
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <p className="text-sm text-zinc-400 mb-2">Learning Path</p>
+                <p className="text-white text-sm">
+                  {countAllNodes(generatedSession.curriculum) - 1} topics to explore
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => router.push(`/learn/${generatedSession.id}`)}
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-black font-medium py-6 text-lg"
+            >
+              Start Learning →
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center p-4">
