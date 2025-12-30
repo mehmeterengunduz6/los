@@ -3,8 +3,17 @@ export interface PersonalizationData {
   name: string;
   topic: string;
   background: string;
-  knowledgeLevel: 'complete-beginner' | 'some-familiarity' | 'intermediate';
+  knowledgeLevel: 'complete-beginner' | 'some-familiarity' | 'intermediate' | 'advanced';
   learningGoals: string;
+  priorKnowledge?: string; // What the user already knows (e.g., "JavaScript, React")
+}
+
+// Message in the onboarding chat
+export interface OnboardingMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
 }
 
 // A single node in the curriculum tree
@@ -70,5 +79,6 @@ export interface CustomNodeData {
   status: 'not-started' | 'in-progress' | 'completed';
   depth: number;
   hasChildren: boolean;
+  sequence?: number; // Optional sequence number for ordering
 }
 

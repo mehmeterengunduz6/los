@@ -21,33 +21,90 @@ Teaching style:
 - Be explicit when correcting mistakes.
 `;
 
+// Generate the system prompt for onboarding chat
+export function getOnboardingSystemPrompt(): string {
+  return `You are a friendly learning assistant helping someone start their personalized learning journey.
+
+Your goal is to gather information to create a perfect curriculum. Have a natural conversation to learn:
+1. What topic they want to learn
+2. Their name
+3. Their current role/profession
+4. Their learning goals (why they want to learn this)
+5. Their prior knowledge (what related technologies/skills they already know)
+
+Conversation guidelines:
+- Be warm, encouraging, and conversational
+- Ask ONE question at a time, don't overwhelm with multiple questions
+- Keep responses SHORT (2-3 sentences max)
+- Acknowledge their answers briefly before asking the next question
+- Start by asking what they want to learn
+
+When you have gathered ALL the information (topic, name, role/profession, goals, and prior knowledge), respond with a special format:
+
+[READY_TO_GENERATE]
+{
+  "name": "their name",
+  "topic": "the topic they want to learn",
+  "background": "their role/profession",
+  "learningGoals": "their stated goals",
+  "priorKnowledge": "what they already know",
+  "knowledgeLevel": "complete-beginner|some-familiarity|intermediate|advanced"
+}
+
+Choose knowledgeLevel based on their prior knowledge:
+- complete-beginner: No related knowledge at all
+- some-familiarity: Knows some basics or related concepts
+- intermediate: Has worked with similar technologies
+- advanced: Expert in related areas, just new to this specific topic
+
+IMPORTANT: Only output the [READY_TO_GENERATE] block when you have ALL the information. Until then, just have a normal conversation.`;
+}
+
 // Generate the system prompt for curriculum generation
 export function getCurriculumGenerationPrompt(personalization: PersonalizationData): string {
-  return `You are an expert curriculum designer and teacher. Your task is to create a structured learning curriculum for a student.
+  const priorKnowledgeNote = personalization.priorKnowledge
+    ? `\n\nIMPORTANT - Prior Knowledge: The student already knows: ${personalization.priorKnowledge}. 
+       DO NOT include topics they already know. Skip prerequisites they're familiar with.
+       For example, if they know JavaScript and want to learn React, skip JS basics entirely.`
+    : '';
+
+  return `You are an expert curriculum designer. Create a comprehensive, granular learning curriculum.
 
 Student Profile:
 - Name: ${personalization.name}
 - Topic to learn: ${personalization.topic}
-- Background: ${personalization.background}
+- Background/Role: ${personalization.background}
 - Current knowledge level: ${personalization.knowledgeLevel}
-- Learning goals: ${personalization.learningGoals}
+- Learning goals: ${personalization.learningGoals}${priorKnowledgeNote}
 
-Create a comprehensive curriculum to teach "${personalization.topic}" from zero to mastery.
+IMPORTANT: Create a HIGHLY GRANULAR curriculum with specific subtopics.
 
-IMPORTANT: You must respond with ONLY a valid JSON object, no markdown, no explanation, no code blocks. The response should be parseable JSON.
+For example, if teaching Next.js to someone who knows React:
+- DON'T include: "JavaScript basics", "React fundamentals"  
+- DO include specific Next.js topics like:
+  - File-based Routing (pages directory, dynamic routes, catch-all routes)
+  - App Router (layouts, loading states, error boundaries)
+  - Data Fetching (getServerSideProps, getStaticProps, ISR)
+  - API Routes (handlers, middleware)
+  - Server Components vs Client Components
+  - Styling (CSS Modules, Tailwind integration)
+  - Deployment (Vercel, self-hosting)
+  - etc.
 
-The JSON structure must be:
+Create 5-8 main sections, each with 3-5 specific subtopics.
+
+RESPOND WITH ONLY VALID JSON (no markdown, no explanation):
 {
   "title": "Main topic title",
-  "description": "Brief description of what will be learned",
+  "description": "Brief description",
   "children": [
     {
-      "title": "Subtopic 1 title",
-      "description": "What this subtopic covers",
+      "title": "Section 1",
+      "description": "What this section covers",
       "children": [
         {
-          "title": "Sub-subtopic 1.1 title",
-          "description": "Specific concept to learn",
+          "title": "Specific Topic 1.1",
+          "description": "Concrete skill/concept learned",
           "children": []
         }
       ]
@@ -55,18 +112,12 @@ The JSON structure must be:
   ]
 }
 
-Guidelines for the curriculum:
-1. Start from first principles - assume no prior knowledge
-2. Build concepts progressively - each topic should build on previous ones
-3. Create 4-6 main subtopics at the top level
-4. Each subtopic can have 2-4 sub-subtopics
-5. Sub-subtopics can have 1-3 deeper topics if needed
-6. Keep titles concise but descriptive
-7. Descriptions should explain what the learner will understand after completing that section
-8. Order topics from foundational to advanced
-9. Consider the student's background and goals when structuring the curriculum
-
-Remember: Return ONLY valid JSON, nothing else.`;
+Guidelines:
+1. Be SPECIFIC - not "Basics" but "Understanding X, Y, Z"
+2. Be PRACTICAL - include real-world applications
+3. Order from foundational to advanced within the chosen topic
+4. Skip anything the student already knows
+5. Align with their stated goals`;
 }
 
 // Generate the system prompt for a node chat
@@ -78,10 +129,10 @@ export function getNodeChatSystemPrompt(
 ): string {
   // Build context from other node chats
   const contextFromOtherNodes = buildContextFromOtherNodes(currentNode, chatHistories, curriculum);
-  
+
   // Get the path to current node
   const pathToNode = getPathToNode(currentNode.id, curriculum);
-  
+
   return `You are a patient, expert teacher helping ${personalization.name} learn ${personalization.topic}.
 
 Student Profile:
@@ -115,10 +166,10 @@ function buildContextFromOtherNodes(
   curriculum: CurriculumNode
 ): string {
   const contexts: string[] = [];
-  
+
   // Get all ancestor nodes
   const ancestors = getAncestorNodes(currentNode.id, curriculum);
-  
+
   for (const ancestor of ancestors) {
     const history = chatHistories[ancestor.id];
     if (history && history.messages.length > 0) {
@@ -126,7 +177,7 @@ function buildContextFromOtherNodes(
       contexts.push(`[${ancestor.title}]: ${summary}`);
     }
   }
-  
+
   // Also include sibling node contexts if they exist
   if (currentNode.parentId) {
     const parent = findNodeById(currentNode.parentId, curriculum);
@@ -142,14 +193,14 @@ function buildContextFromOtherNodes(
       }
     }
   }
-  
+
   return contexts.join('\n');
 }
 
 // Get the path from root to a specific node
 function getPathToNode(nodeId: string, curriculum: CurriculumNode): CurriculumNode[] {
   const path: CurriculumNode[] = [];
-  
+
   function search(node: CurriculumNode, currentPath: CurriculumNode[]): boolean {
     const newPath = [...currentPath, node];
     if (node.id === nodeId) {
@@ -163,7 +214,7 @@ function getPathToNode(nodeId: string, curriculum: CurriculumNode): CurriculumNo
     }
     return false;
   }
-  
+
   search(curriculum, []);
   return path;
 }
@@ -193,11 +244,11 @@ function summarizeChat(messages: { role: string; content: string }[]): string {
     .filter(m => m.role === 'assistant')
     .slice(-2)
     .map(m => m.content.slice(0, 200));
-  
+
   if (assistantMessages.length === 0) {
     return 'No content yet';
   }
-  
+
   return assistantMessages.join(' ... ').slice(0, 400) + '...';
 }
 

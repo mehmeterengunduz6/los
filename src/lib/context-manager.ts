@@ -1,24 +1,42 @@
-import { CurriculumNode, NodeChatHistory, ChatMessage, LearningSession } from '@/types';
+import { CurriculumNode, NodeChatHistory, ChatMessage, LearningSession, PersonalizationData } from '@/types';
 
 const STORAGE_KEY = 'recursive-learning-sessions';
+const SAVED_INPUT_KEY = 'recursive-learning-saved-input';
+
+// Save last onboarding input for quick regeneration
+export function saveLastInput(personalization: PersonalizationData): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SAVED_INPUT_KEY, JSON.stringify(personalization));
+}
+
+// Get saved onboarding input
+export function getSavedInput(): PersonalizationData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const data = localStorage.getItem(SAVED_INPUT_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
+}
 
 // Save session to localStorage
 export function saveSession(session: LearningSession): void {
   if (typeof window === 'undefined') return;
-  
+
   const sessions = getAllSessions();
   sessions[session.id] = {
     ...session,
     updatedAt: Date.now()
   };
-  
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 }
 
 // Get all sessions from localStorage
 export function getAllSessions(): Record<string, LearningSession> {
   if (typeof window === 'undefined') return {};
-  
+
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : {};
@@ -36,7 +54,7 @@ export function getSession(sessionId: string): LearningSession | null {
 // Delete a session
 export function deleteSession(sessionId: string): void {
   if (typeof window === 'undefined') return;
-  
+
   const sessions = getAllSessions();
   delete sessions[sessionId];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
@@ -66,7 +84,7 @@ function updateNodeStatusRecursive(
   }
   return {
     ...node,
-    children: node.children.map(child => 
+    children: node.children.map(child =>
       updateNodeStatusRecursive(child, nodeId, status)
     )
   };
@@ -82,7 +100,7 @@ export function addMessageToHistory(
     nodeId,
     messages: []
   };
-  
+
   return {
     ...session,
     chatHistories: {
@@ -110,7 +128,7 @@ export function getNodeChatHistory(
 // Generate a summary for a node's chat (for context in other nodes)
 export function generateChatSummary(messages: ChatMessage[]): string {
   if (messages.length === 0) return '';
-  
+
   // Get key points from assistant messages
   const keyPoints = messages
     .filter(m => m.role === 'assistant')
@@ -118,7 +136,7 @@ export function generateChatSummary(messages: ChatMessage[]): string {
     .slice(-3)
     .join('\n')
     .slice(0, 500);
-  
+
   return keyPoints + (keyPoints.length >= 500 ? '...' : '');
 }
 
@@ -132,16 +150,16 @@ export function calculateProgress(curriculum: CurriculumNode): {
   let total = 0;
   let completed = 0;
   let inProgress = 0;
-  
+
   function countNodes(node: CurriculumNode): void {
     total++;
     if (node.status === 'completed') completed++;
     if (node.status === 'in-progress') inProgress++;
     node.children.forEach(countNodes);
   }
-  
+
   countNodes(curriculum);
-  
+
   return {
     total,
     completed,
@@ -156,12 +174,12 @@ export function findNodeInCurriculum(
   nodeId: string
 ): CurriculumNode | null {
   if (curriculum.id === nodeId) return curriculum;
-  
+
   for (const child of curriculum.children) {
     const found = findNodeInCurriculum(child, nodeId);
     if (found) return found;
   }
-  
+
   return null;
 }
 

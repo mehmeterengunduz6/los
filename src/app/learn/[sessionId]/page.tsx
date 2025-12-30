@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import CurriculumTree from '@/components/CurriculumTree';
+import CurriculumChecklist from '@/components/CurriculumChecklist';
 import NodeChat from '@/components/NodeChat';
 import { LearningSession } from '@/types';
 import { getSession, saveSession, calculateProgress } from '@/lib/context-manager';
@@ -80,7 +81,7 @@ export default function LearnPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="h-screen bg-zinc-950 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-xl">
         <div className="px-6 py-4">
@@ -103,7 +104,7 @@ export default function LearnPage({ params }: PageProps) {
                 </p>
               </div>
             </div>
-            
+
             {progress && (
               <div className="flex items-center gap-4">
                 <div className="text-right">
@@ -113,8 +114,8 @@ export default function LearnPage({ params }: PageProps) {
                   </p>
                 </div>
                 <div className="w-32">
-                  <Progress 
-                    value={progress.percentage} 
+                  <Progress
+                    value={progress.percentage}
                     className="h-2 bg-zinc-800"
                   />
                 </div>
@@ -126,6 +127,15 @@ export default function LearnPage({ params }: PageProps) {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Checklist Sidebar */}
+        <div className="w-72 flex-shrink-0">
+          <CurriculumChecklist
+            curriculum={session.curriculum}
+            selectedNodeId={selectedNodeId}
+            onNodeClick={handleNodeClick}
+          />
+        </div>
+
         {/* Tree visualization */}
         <div className={`flex-1 transition-all duration-300 ${selectedNodeId ? 'w-1/2' : 'w-full'}`}>
           <CurriculumTree
@@ -137,7 +147,7 @@ export default function LearnPage({ params }: PageProps) {
 
         {/* Chat panel */}
         {selectedNodeId && (
-          <div className="w-1/2 border-l border-zinc-800 flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="w-[400px] border-l border-zinc-800 flex flex-col animate-in slide-in-from-right duration-300">
             <NodeChat
               session={session}
               nodeId={selectedNodeId}
@@ -147,15 +157,6 @@ export default function LearnPage({ params }: PageProps) {
           </div>
         )}
       </div>
-
-      {/* Footer hint */}
-      {!selectedNodeId && (
-        <div className="flex-shrink-0 border-t border-zinc-800 bg-zinc-900/50 px-6 py-3">
-          <p className="text-center text-sm text-zinc-500">
-            Click on any topic in the tree to start learning
-          </p>
-        </div>
-      )}
     </div>
   );
 }
